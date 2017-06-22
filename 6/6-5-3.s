@@ -5,7 +5,6 @@ main:
 	MOV	r1, #4
 
 	MOV	r9, #0
-	@LDR	r0, =0x4000
 	LDR	r0, =ARRAY
 	CMP	r1, #16
 	BGE	fim
@@ -14,6 +13,25 @@ main:
 	ADD	r2, r2, #1
 	MUL	r3, r2, r1	@ r3 = (N^2 + 1) * N
 	MOV	r2, r3, LSR #1  @ r2 = (N^2 + 1) * N / 2
+
+	@ Verificar se array contem 1..N2 com busca linear
+	MUL	r3, r1, r1
+	MOV	r7, r3
+search:	SUB	r3, r3, #1
+	LDRB	r5, [r0, r3]
+	CMP	r5, #1
+	BLT	fim
+	CMP	r5, r7
+	BGT	fim
+	SUBS	r4, r3, #1
+	BMI	s_cont
+s_loop:	LDRB	r6, [r0, r4]
+	CMP	r5, r6
+	BEQ	fim
+	SUBS	r4, r4, #1
+	BPL	s_loop
+	BAL	search
+s_cont:
 
 	@ array = r0
 	@ N = r1
