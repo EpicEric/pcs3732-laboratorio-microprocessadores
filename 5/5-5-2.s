@@ -1,6 +1,6 @@
 	.text
 	.globl main
-	main:
+main:
 	MOV	r6, #0xA	@ valor de entrada
 	MOV	r4, r6		@ copia entrada para r4
 loop:

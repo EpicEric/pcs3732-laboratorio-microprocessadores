@@ -1,5 +1,5 @@
-.text
-.globl main
+	.text
+	.globl main
 main:
 	@ test values
 	mov	r5, #11		@ number of integers
