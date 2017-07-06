@@ -19,11 +19,9 @@ descending:
 	MOV	r3, r2, LSL #4		@ Configura quais LEDs serao usados
 	STR	r3, [r1]		@ Envia nova informacao de LEDs
 	BL	delay			@ Aguarda
-	SUB	r2, r2, #1		@ Verifica se terminou sequencia
-	CMP	r2, #0x0
-	BGT	descending
+	SUBS r2, r2, #1		@ Verifica se terminou sequencia
+	BNE	descending
 	B	ascending		@ Loop infinito
-	SWI 	0x0
 
 @ Subrotina de delay
 delay:

@@ -4,10 +4,8 @@
 main:
 	ADR	r3, data		@ Acessa a memoria de input
 	LDR	r4, [r3]		@ Pega valor da memoria
-	CMP	r4, #0x0		@ Verifica se o valor e' valido
-	BLT	fim
-	CMP	r4, #0xF
-	BGT	fim
+	CMP	r4, #0xF		@ Verifica se o valor e' valido
+	BHI	fim
 
 	LDR	r0, =0x3FF5000		@ IOPMOD
 	LDR	r2, =0x1FC00		@ Escreve bits [16:10] do IOPMOD
@@ -18,7 +16,7 @@ main:
 	LDR	r7, [r6, r4, LSL #2]	@ Muda os pinos de IOPDATA de acordo com valor
 	STR	r7, [r5]
 fim:
-	SWI 	0x0
+	b fim
 
 @ Input
 data:
