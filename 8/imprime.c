@@ -17,8 +17,34 @@ void init_display() {
 }
 
 void imprime(unsigned n) {
-    if (n <= 0xf) {
-        *IOPDATA &= ~SEG_MASK;
-        *IOPDATA |= (unsigned) numeric_display[n];
-    }
+    __asm__(
+        "ldr	r3, [fp, #-16]\n\t"
+    	"cmp	r3, #15\n\t"
+    	"bhi	asm_end\n\t"
+    	"mov	r2, #66846720\n\t"
+    	"add	r2, r2, #217088\n\t"
+    	"add	r2, r2, #8\n\t"
+    	"mov	r3, #66846720\n\t"
+    	"add	r3, r3, #217088\n\t"
+    	"add	r3, r3, #8\n\t"
+    	"ldr	r3, [r3, #0]\n\t"
+    	"bic	r3, r3, #130048\n\t"
+    	"str	r3, [r2, #0]\n\t"
+    	"mov	r2, #66846720\n\t"
+    	"add	r2, r2, #217088\n\t"
+    	"add	r2, r2, #8\n\t"
+    	"mov	r3, #66846720\n\t"
+    	"add	r3, r3, #217088\n\t"
+    	"add	r3, r3, #8\n\t"
+    	"ldr	ip, numeric_display_pointer\n\t"
+    	"ldr	r1, [fp, #-16]\n\t"
+    	"ldr	r0, [r3, #0]\n\t"
+    	"ldr	r3, [ip, r1, asl #2]\n\t"
+    	"orr	r3, r0, r3\n\t"
+    	"str	r3, [r2, #0]\n\t"
+    	"b      asm_end\n\t"
+        "numeric_display_pointer:\n\t"
+        ".word	numeric_display\n\t"
+        "asm_end:\n\t"
+    );
 }
