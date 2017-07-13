@@ -13,14 +13,18 @@ static unsigned int numeric_display [16] =
     DISP_A, DISP_B, DISP_C, DISP_D, DISP_E, DISP_F
 };
 
+static void imprime(unsigned n) {
+    if (n <= 0xf) {
+        *IOPDATA &= ~SEG_MASK;
+        *IOPDATA |= (unsigned) numeric_display[n];
+    }
+}
+
 int main(void) {
     // inicalização
     *IOPMOD |= SEG_MASK;
     *IOPDATA |= SEG_MASK;
     unsigned numero = 0x6;
-    if ( numero <= 0xf ) {
-        *IOPDATA &= ~SEG_MASK;
-        *IOPDATA |= (unsigned) numeric_display[numero];
-    }
+    imprime(numero);
     return 0;
 }
