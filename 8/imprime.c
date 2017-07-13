@@ -4,6 +4,7 @@ void imprime(int i);
 
 int main() {
 	imprime(5);
+	return 0;
 }
 
 void imprime(int i) {

@@ -11,6 +11,7 @@ main:
 	sub	fp, ip, #4
 	mov	r0, #5
 	bl	imprime
+	mov	r3, #0
 	mov	r0, r3
 	ldmfd	sp, {fp, sp, pc}
 	.size	main, .-main
