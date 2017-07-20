@@ -7,7 +7,7 @@ void print_uart0(const char *s) {
     }
 }
 
-void undefined_instruction_handler() {
+__attribute__((noreturn)) void undefined_instruction_handler() {
     print_uart0("Invalid instruction!\n");
     for (;;) ;
 }

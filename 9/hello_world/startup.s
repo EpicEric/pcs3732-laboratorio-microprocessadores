@@ -6,4 +6,5 @@ _Reset:
 Reset_Handler:
     LDR sp, =stack_top
     BL c_entry
+    .word 0xffffffff
     B .
