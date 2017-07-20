@@ -7,6 +7,11 @@ void print_uart0(const char *s) {
     }
 }
 
+void undefined_instruction_handler() {
+    print_uart0("Invalid instruction!\n");
+    for (;;) ;
+}
+
 void c_entry() {
     print_uart0("Hello world!\n");
 }
