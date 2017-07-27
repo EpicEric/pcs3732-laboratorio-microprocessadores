@@ -84,9 +84,6 @@ handler_timer:
 @ ============================================================================================================
 
 timer_init:
-	MRS	r0, cpsr
-	BIC	r0, r0, #0x80
-	MSR	cpsr_c, r0		@ Enabling interrupts in the cpsr
 	LDR	r0, INTEN
 	LDR	r1, =0x10		@ Bit 4 for timer 0 interrupt enable
 	STR	r1, [r0]
@@ -97,6 +94,9 @@ timer_init:
 	LDR	r0, TIMER0V
 	MOV	r1, #0xFF		@ Setting timer value
 	STR	r1, [r0]
+	MRS	r0, cpsr
+	BIC	r0, r0, #0x80
+	MSR	cpsr_c, r0		@ Enabling interrupts in the cpsr
 	MOV	pc, lr
 
 @ ============================================================================================================
