@@ -64,7 +64,7 @@ do_irq_interrupt:	@ Rotina de interrupcoes IRQ
 	TST	r0, #0x10		@ Verifica se e' uma interupcao de timer
 	BNE	handler_timer		@ Vai para o rotina de tratamento da interupcao de timer
 	LDMFD	sp!, {r0-r3, lr}	@ Retorna
-	MOV	pc, r14
+	SUB	pc, lr, #4
 
 @ ============================================================================================================
 @ 3.4 Tratamento da interrupcao de timer
@@ -78,7 +78,7 @@ handler_timer:
 @ >> Inserir codigo que sera executado na interrucao de timer aqui <<
 
 	LDMFD	sp!, {r0-r3, lr}
-	MOV	pc, r14			@ Retorna
+	SUB 	pc, lr, #4
 
 @ ============================================================================================================
 @ 3.5 Rotina de inicializacao de timer
@@ -106,4 +106,4 @@ timer_init:
 
 main:
 	BL	timer_init		@ Initialize interrupts and timer 0
-stop:	B	stop
+	B	.
