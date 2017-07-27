@@ -61,5 +61,16 @@ INTPND:		.word	0x10140000	@ Interrupt status register
 @ ============================================================================================================
 
 main:
+	ADR	r0, hello_world
+	BL	print_uart0
 	BL	timer_init		@ Initialize interrupts and timer 0
-	B	.
+loop:
+	MOV	r0, #0x200000
+sleep:	SUBS	r0, r0, #1
+	BNE	sleep
+	ADR	r0, message_2
+	BL	print_uart0
+	B	loop
+
+hello_world:	.asciz "Hello World\n"
+message_2:	.asciz "2"
