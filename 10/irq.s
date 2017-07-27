@@ -38,7 +38,12 @@ TIMER0X:	.word	0x101E200C	@ Timer 0 interrupt clear register
 @ 3.3 Tratamento de interrupcoes
 @ ============================================================================================================
 
-_Reset:			BL	main
+_Reset:			LDR	sp, =stack_top
+			MRS	r0, cpsr		@ Save current cpsr
+			MSR	cpsr_ctl, #0b11010010	@ IRQ mode
+			LDR	sp, =irq_stack_top
+			MSR	cpsr, r0
+			BL	main
 			B	.
 undefined_instruction:	B	.
 software_interrupt:	B	do_software_interrupt	@ Vai para o handler de interrupcoes de software
