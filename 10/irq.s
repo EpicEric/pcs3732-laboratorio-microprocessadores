@@ -58,13 +58,13 @@ do_software_interrupt:	@ Rotina de interrupcao de software
 	MOV	pc, r14			@ Volta p/ o endereco armazenado em r14
 
 do_irq_interrupt:	@ Rotina de interrupcoes IRQ
+	SUB	lr, lr, #4
 	STMFD	sp!, {r0-r3, lr}	@ Empilha os registradores
 	LDR	r0, INTPND		@ Carrega o registrador de status de interrupcao
 	LDR	r0, [r0]
 	TST	r0, #0x10		@ Verifica se e' uma interupcao de timer
 	BNE	handler_timer		@ Vai para o rotina de tratamento da interupcao de timer
-	LDMFD	sp!, {r0-r3, lr}	@ Retorna
-	SUB	pc, lr, #4
+	LDMFD	sp!,{r0-r3, pc}^
 
 @ ============================================================================================================
 @ 3.4 Tratamento da interrupcao de timer
@@ -77,8 +77,7 @@ handler_timer:
 
 @ >> Inserir codigo que sera executado na interrucao de timer aqui <<
 
-	LDMFD	sp!, {r0-r3, lr}
-	SUB 	pc, lr, #4
+	LDMFD	sp!,{r0-r3, pc}^
 
 @ ============================================================================================================
 @ 3.5 Rotina de inicializacao de timer
