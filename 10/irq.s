@@ -23,18 +23,6 @@ _irq:			.word	irq
 _fiq:			.word	fiq
 
 @ ============================================================================================================
-@ 3.2 Definicao de constantes
-@ ============================================================================================================
-
-INTPND:		.word	0x10140000	@ Interrupt status register
-INTSEL:		.word	0x1014000C	@ Interrupt select register (0 = irq, 1 = fiq)
-INTEN:		.word	0x10140010	@ Interrupt enable register
-TIMER0L:	.word	0x101E2000	@ Timer 0 load register
-TIMER0V:	.word	0x101E2004	@ Timer 0 value registers
-TIMER0C:	.word	0x101E2008	@ Timer 0 control register
-TIMER0X:	.word	0x101E200C	@ Timer 0 interrupt clear register
-
-@ ============================================================================================================
 @ 3.3 Tratamento de interrupcoes
 @ ============================================================================================================
 
@@ -63,41 +51,10 @@ do_irq_interrupt:	@ Rotina de interrupcoes IRQ
 	LDR	r0, INTPND		@ Carrega o registrador de status de interrupcao
 	LDR	r0, [r0]
 	TST	r0, #0x10		@ Verifica se e' uma interupcao de timer
-	BNE	handler_timer		@ Vai para o rotina de tratamento da interupcao de timer
+	BLNE	timer_handler
 	LDMFD	sp!,{r0-r3, pc}^
 
-@ ============================================================================================================
-@ 3.4 Tratamento da interrupcao de timer
-@ ============================================================================================================
-
-handler_timer:
-	LDR	r0, TIMER0X
-	MOV	r1, #0x0
-	STR	r1, [r0]		@ Escreve no registrador TIMER0X para limpar o pedido de interrupcao
-
-@ >> Inserir codigo que sera executado na interrucao de timer aqui <<
-
-	LDMFD	sp!,{r0-r3, pc}^
-
-@ ============================================================================================================
-@ 3.5 Rotina de inicializacao de timer
-@ ============================================================================================================
-
-timer_init:
-	LDR	r0, INTEN
-	LDR	r1, =0x10		@ Bit 4 for timer 0 interrupt enable
-	STR	r1, [r0]
-	LDR	r0, TIMER0C
-	LDR	r1, [r0]
-	MOV	r1, #0xA0		@ Enable timer module
-	STR	r1, [r0]
-	LDR	r0, TIMER0V
-	MOV	r1, #0xFF		@ Setting timer value
-	STR	r1, [r0]
-	MRS	r0, cpsr
-	BIC	r0, r0, #0x80
-	MSR	cpsr_c, r0		@ Enabling interrupts in the cpsr
-	MOV	pc, lr
+INTPND:		.word	0x10140000	@ Interrupt status register
 
 @ ============================================================================================================
 @ 3.6 Programa principal

@@ -2,6 +2,7 @@ ENTRY(_start)
 SECTIONS
 {
 	. = 0x0;
+	.startup . : { irq.o(.text) }
 	.text : { * (.text) }
 	.data : { *(.data) }
 	.bss : { *(.bss COMMON) }
