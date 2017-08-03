@@ -39,13 +39,14 @@ _Reset:	LDR	sp, =stack_top
 	ADR	r0, message_1
 	B	main
 
-message_1:		.asciz "1"
-message_2:		.asciz "2"
+message_1:		.asciz "1\n"
+message_2:		.asciz "2\n"
 
 .align 4
 do_irq_interrupt:
 	@ Empilha scratch registers e lr, salva lr em irq_return_address
 	SUB	lr, lr, #4
+	STR	lr, irq_return_address
 
 	@ Verifica se interrupcao de timer
 	LDR	r14, INTPND
@@ -94,9 +95,7 @@ save_process_state:
 
 case_timer_interrupt:	@ Rotina de interrupcao de timer, modo IRQ
 	@ Salva estado do processo
-	STR	lr, irq_return_address
 	BL	save_process_state
-
 	BL    	timer_handler  @ scratches r0-r3
 
 	@ Muda processo
