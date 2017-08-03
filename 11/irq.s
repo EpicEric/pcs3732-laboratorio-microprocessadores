@@ -27,7 +27,7 @@ _Reset:
 	ADR	r1, main
 	STR	r1, irq_return_address
 	LDR	sp, =process_1_stack_top
-	MOV	r0, #0x32
+	ADR	r0, message_2
 	BL	save_process_state
 
 	@ Switch to first process
@@ -37,8 +37,11 @@ _Reset:
 
 	BL	timer_init
 
-	MOV	r0, #0x31
+	ADR	r0, message_1
 	B	main
+
+message_1:		.asciz "1"
+message_2:		.asciz "2"
 
 .align 4
 do_irq_interrupt:
@@ -130,18 +133,14 @@ case_timer_interrupt:	@ Rotina de interrupcao de timer, modo IRQ
 
 
 INTPND:		.word	0x10140000	@ Interrupt status register
-UART0DR:	.word	0x101f1000
 
 @ ============================================================================================================
 @ 3.6 Programa principal
 @ ============================================================================================================
 
 main:
-	LDR	r1, UART0DR
-	print_loop:
-		STR	r0, [r1]
-	B	print_loop
-	@ BL	print_uart0
+	BL	print_uart0
+	B	main
 
 .align 4
 process_0_table:		.space 68
