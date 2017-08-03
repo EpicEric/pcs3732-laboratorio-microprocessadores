@@ -1,95 +1,131 @@
+	.global	_start
+	.text
 @ ============================================================================================================
 @ 3.1 Definicao de vetor de interrupcoes
 @ ============================================================================================================
-
-	.global	_start
-	.text
 _start:
 	B	_Reset				@ Posicao 0x00 - Reset
-	LDR	pc, _undefined_instruction	@ Posicao 0x04 - Instrucao nao-definida
-	LDR	pc, _software_interrupt		@ Posicao 0x08 - Interrupcao de software
-	LDR	pc, _prefetch_abort		@ Posicao 0x0C - Prefetch abort
-	LDR	pc, _data_abort			@ Posicao 0x10 - Data abort
-	LDR	pc, _not_used			@ Posicao 0x14 - Nao utilizado
-	LDR	pc, _irq			@ Posicao 0x18 - Interrupcao (IRQ)
-	LDR	pc, _fiq			@ Posicao 0x1C - Interrupcao (FIQ)
-
-_undefined_instruction:	.word	undefined_instruction
-_software_interrupt:	.word	software_interrupt
-_prefetch_abort:	.word	prefetch_abort
-_data_abort:		.word	data_abort
-_not_used:		.word	not_used
-_irq:			.word	irq
-_fiq:			.word	fiq
+	B	.				@ Posicao 0x04 - Instrucao nao-definida
+	B	.				@ Posicao 0x08 - Interrupcao de software
+	B	.				@ Posicao 0x0C - Prefetch abort
+	B	.				@ Posicao 0x10 - Data abort
+	B	.				@ Posicao 0x14 - Nao utilizado
+	B	do_irq_interrupt		@ Posicao 0x18 - Interrupcao (IRQ)
+	B	.				@ Posicao 0x1C - Interrupcao (FIQ)
 
 @ ============================================================================================================
 @ 3.3 Tratamento de interrupcoes
 @ ============================================================================================================
+_Reset:	LDR	sp, =stack_top
 
-_Reset:			LDR	sp, =stack_top
-			MRS	r0, cpsr		@ Save current cpsr
-			MSR	cpsr_ctl, #0b11010010	@ IRQ mode
-			LDR	sp, =irq_stack_top
-			MSR	cpsr, r0
-			BL	main
-			B	.
-undefined_instruction:	B	.
-software_interrupt:	B	do_software_interrupt	@ Vai para o handler de interrupcoes de software
-prefetch_abort:		B	.
-data_abort:		B	.
-not_used:		B	.
-irq:			B	do_irq_interrupt	@ Vai para o handler de interrupcoes IRQ
-fiq:			B	.
+	@ Set IRQ mode stack
+	MRS	r0, cpsr		@ Save cpsr
+	MSR	cpsr_ctl, #0b11010010	@ IRQ mode
+	LDR	sp, =irq_stack_top
+	MSR	cpsr, r0
 
-do_software_interrupt:	@ Rotina de interrupcao de software
-	ADD	r1, r2, r3		@ r1 = r2 + r3
-	MOV	pc, r14			@ Volta p/ o endereco armazenado em r14
+	@ Set second process state
+	ADR	r1, main
+	STR	r1, irq_return_address
+	ADR	r0, message_2
+	BL	save_process_state
 
-do_irq_interrupt:	@ Rotina de interrupcoes IRQ
+	@ Switch to first process
+	MOV	r0, #0
+	STR	r0, current_process
+
+	BL	timer_init
+
+	ADR	r0, message_1
+	B	main
+
+message_1:		.asciz "1"
+message_2:		.asciz "2"
+
+.align 4
+do_irq_interrupt:
+	@ Empilha scratch registers e lr, salva lr em irq_return_address
 	SUB	lr, lr, #4
-	STMFD   sp!, {r0-r3, lr}        @ Empilha os registradores
-	STR	lr, extra_save		@ Salva lr/IRQ (main pc)
 
-	LDR	r14, INTPND		@ Carrega o registrador de status de interrupcao, usa lr
+	@ Verifica se interrupcao de timer
+	LDR	r14, INTPND
 	LDR	r14, [r14]
-	TST	r14, #0x10		@ Verifica se e' uma interupcao de timer
+	TST	r14, #0x10
 	BNE	case_timer_interrupt
-irq_exit:
-	LDMFD	sp!,{r0-r3, pc}^
+	MOV	pc, lr
+
+
+get_current_process_table:
+	@ Retorna em r0 uma referencia a tabela de registradores do processo atual
+	LDR	r0, current_process
+	CMP	r0, #0
+	ADR	r0, process_0_table
+	MOVEQ	pc, lr
+	ADD	r0, r0, #68
+	MOV	pc, lr
+
+
+save_process_state:
+	@ Salva tabela de registradores do processo atual.
+	@ O valor salvo de lr e' pego de irq_return_address.
+
+	@ Aponta r14 para tabela de registradores do processo atual
+	STMFD   sp!, {r0, lr}
+	BL	get_current_process_table
+	MOV 	r14, r0
+	LDMFD	sp!, {r0}
+
+	@ Salva registradores
+	STMIA   r14!, {r0-r12}
+
+	@ Salva modo, muda para supervisor e salva banked registers
+	MOV     r2, r14                 @ r2 referencia tabela de registradores
+	MRS     r1, cpsr
+	MSR     cpsr_ctl, #0b11010011   @ Supervisor, I = 0
+	STMIA   r2!, {sp, lr}
+	MSR     cpsr, r1
+
+	MRS     r1, spsr                @ Carrega spsr/IRQ (main cpsr)
+	LDR     r0, irq_return_address
+	STMIA   r2!, {r0, r1}          @ Salva lr original e cpsr
+
+	LDMFD	sp!, {pc}
 
 
 case_timer_interrupt:	@ Rotina de interrupcao de timer, modo IRQ
-	@ parte de salvar
-	ADR     r14, linhaA             @ Usa lr como referencia para linhaA
-        STMIA   r14!, {r0-r12}          @ Salva de r0 a r12
-        MRS     r1, spsr                @ Carrega spsr/IRQ (main cpsr)
-        LDR     r0, extra_save
-        STMIA   r14!, {r0, r1}          @ Salva main pc e cpsr
-        MOV     r0, r14                 @ r0 agora eh referencia de linhaA
-        MRS     r1, cpsr                @ Salva modo atual
-        MSR     cpsr_ctl, #0b11010011   @ Muda pra modo supervisor com interrupcoes fora
-        STMIA   r0!, {r13, r14}         @ Salva sp e lr de main
-        MSR     cpsr, r1                @ Volta pro modo irq
-	STR	r0, extra_save		@ Salva referencia linhaA
+	@ Salva estado do processo
+	STR	lr, irq_return_address
+	BL	save_process_state
 
-	BL    	timer_handler		@ Handler
+	BL    	timer_handler  @ scratches r0-r3
 
-        @parte restauracao
-	LDR	r0, extra_save		@ Recupera referencia linhaA
-        MRS     r1, cpsr                @ Salva modo atual
-        MSR     cpsr_ctl, #0b11010011   @ Muda pra modo supervisor com interrupcoes fora
-	LDMDB	r0!, {r13, r14}		@ Restaura sp e lr de main
-	MSR	cpsr, r1		@ Volta pro modo irq
-	LDMDB	r0!, {r1, r2}		@ r1 recebe lr_irq e r2 spsr
-	MSR	spsr, r2		@ Restaura spsr
-	
-	STR	r1, extra_save		@ Poe lr_irq na memoria
+	@ Muda processo
+	LDR	r0, current_process
+	EOR	r0, r0, #1
+	STR	r0, current_process
+	BL	get_current_process_table
+	ADD	r0, r0, #68  @ aponta para fim da tabela
 
-	MOV	r14, r0			@ r14 agora eh referencia de linhaA
-	LDMDB	r14!, {r0-r12}		@ Restaura todos os registradores	
-	LDR	lr, extra_save		@ Restaura lr_irq
+	@ r1 = lr, r2 = spsr e restaura spsr
+	LDMDB	r0!, {r1, r2}
+	MSR	spsr, r2
+	STR	r1, irq_return_address
 
-	B	irq_exit
+        @ Restaura banked registers
+        MRS     r1, cpsr
+        MSR     cpsr_ctl, #0b11010011   @ Supervisor, I = 0
+	LDMDB	r0!, {sp, lr}
+	MSR	cpsr, r1
+
+	@ Restaura r0-r12
+	MOV	r14, r0
+	LDMDB	r14!, {r0-r12}
+
+	@ Retorno a processo
+	LDR	lr, [r14, #60]
+	STR	lr, [sp]
+	LDMFD	sp!, {pc}^  @ Retorna da IRQ
+
 
 INTPND:		.word	0x10140000	@ Interrupt status register
 
@@ -98,18 +134,10 @@ INTPND:		.word	0x10140000	@ Interrupt status register
 @ ============================================================================================================
 
 main:
-	ADR	r0, hello_world
 	BL	print_uart0
-	BL	timer_init		@ Initialize interrupts and timer 0
-loop:
-	MOV	r0, #0x200000
-sleep:	SUBS	r0, r0, #1
-	BNE	sleep
-	ADR	r0, message_2
-	BL	print_uart0
-	B	loop
+	B	main
 
-linhaA:		.space 68
-extra_save:	.word	1
-hello_world:	.asciz "Hello World\n"
-message_2:	.asciz "2"
+process_0_table:		.space 68
+process_1_table:		.space 68
+irq_return_address:	.word	0
+current_process:	.word	1

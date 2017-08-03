@@ -10,5 +10,5 @@ void print_uart0(const char *s) {
 
 void timer_handler() {
         *TIMER0X = 0;
-        print_uart0("1\n");
+        print_uart0("Switching\n");
 }
