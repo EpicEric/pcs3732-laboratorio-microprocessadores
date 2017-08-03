@@ -27,7 +27,7 @@ _Reset:
 	ADR	r1, main
 	STR	r1, irq_return_address
 	LDR	sp, =process_1_stack_top
-	ADR	r0, message_2
+	ADR	r4, message_2
 	BL	save_process_state
 
 	@ Switch to first process
@@ -37,7 +37,7 @@ _Reset:
 
 	BL	timer_init
 
-	ADR	r0, message_1
+	ADR	r4, message_1
 	B	main
 
 message_1:		.asciz "1"
@@ -139,6 +139,7 @@ INTPND:		.word	0x10140000	@ Interrupt status register
 @ ============================================================================================================
 
 main:
+	MOV	r0, r4
 	BL	print_uart0
 	B	main
 
