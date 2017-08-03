@@ -16,8 +16,7 @@ _start:
 @ ============================================================================================================
 @ 3.3 Tratamento de interrupcoes
 @ ============================================================================================================
-_Reset:	LDR	sp, =stack_top
-
+_Reset:
 	@ Set IRQ mode stack
 	MRS	r0, cpsr		@ Save cpsr
 	MSR	cpsr_ctl, #0b11010010	@ IRQ mode
@@ -27,20 +26,22 @@ _Reset:	LDR	sp, =stack_top
 	@ Set second process state
 	ADR	r1, main
 	STR	r1, irq_return_address
+	LDR	sp, =process_1_stack_top
 	ADR	r0, message_2
 	BL	save_process_state
 
 	@ Switch to first process
 	MOV	r0, #0
 	STR	r0, current_process
+	LDR	sp, =process_0_stack_top
 
 	BL	timer_init
 
 	ADR	r0, message_1
 	B	main
 
-message_1:		.asciz "1\n"
-message_2:		.asciz "2\n"
+message_1:		.asciz "1"
+message_2:		.asciz "2"
 
 .align 4
 do_irq_interrupt:
@@ -122,7 +123,7 @@ case_timer_interrupt:	@ Rotina de interrupcao de timer, modo IRQ
 
 	@ Retorno a processo
 	LDR	lr, [r14, #60]
-	STR	lr, [sp]
+	STMFD	sp!, {lr}
 	LDMFD	sp!, {pc}^  @ Retorna da IRQ
 
 
