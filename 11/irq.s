@@ -80,9 +80,15 @@ save_process_state:
 	@ Salva modo, muda para supervisor e salva banked registers
 	MOV     r2, r14                 @ r2 referencia tabela de registradores
 	MRS     r1, cpsr
-	MSR     cpsr_ctl, #0b11010011   @ Supervisor, I = 0
+	AND	r3, r1, #0x1f
+	CMP	r3, #0x13		@ Ja em modo supervisor?
+	BEQ	push_banked_registers	@ Pula mudanca de modo
+	MSR     cpsr_ctl, #0b11010011   @ Supervisor, I = 1
+	push_banked_registers:
 	STMIA   r2!, {sp, lr}
+	BEQ	no_mode_restore
 	MSR     cpsr, r1
+	no_mode_restore:
 
 	MRS     r1, spsr                @ Carrega spsr/IRQ (main cpsr)
 	LDR     r0, irq_return_address
@@ -106,11 +112,10 @@ case_timer_interrupt:	@ Rotina de interrupcao de timer, modo IRQ
 	@ r1 = lr, r2 = spsr e restaura spsr
 	LDMDB	r0!, {r1, r2}
 	MSR	spsr, r2
-	STR	r1, irq_return_address
 
         @ Restaura banked registers
         MRS     r1, cpsr
-        MSR     cpsr_ctl, #0b11010011   @ Supervisor, I = 0
+        MSR     cpsr_ctl, #0b11010011   @ Supervisor, I = 1
 	LDMDB	r0!, {sp, lr}
 	MSR	cpsr, r1
 
