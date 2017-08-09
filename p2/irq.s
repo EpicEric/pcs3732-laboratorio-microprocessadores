@@ -1,7 +1,7 @@
 	.global	_start
 	.text
 @ ============================================================================================================
-@ 3.1 Definicao de vetor de interrupcoes
+@ Definicao de vetor de interrupcoes
 @ ============================================================================================================
 _start:
 	B	_Reset				@ Posicao 0x00 - Reset
@@ -14,7 +14,7 @@ _start:
 	B	.				@ Posicao 0x1C - Interrupcao (FIQ)
 
 @ ============================================================================================================
-@ 3.3 Tratamento de interrupcoes
+@ Tratamento de interrupcoes
 @ ============================================================================================================
 _Reset:
 	@ Set IRQ mode stack
@@ -75,11 +75,10 @@ do_irq_interrupt:
 
 get_current_process_table:
 	@ Retorna em r0 uma referencia a tabela de registradores do processo atual
-	LDR	r0, current_process
-	MOV	r1, #68
-	MUL	r1, r0, r1
-	ADR	r0, process_0_table
-	ADD	r0, r0, r1
+	LDR	r1, current_process
+	MOV	r2, #68
+	ADR	r3, process_0_table
+	MLA	r0, r1, r2, r3
 	MOV	pc, lr
 
 
@@ -154,7 +153,7 @@ case_timer_interrupt:	@ Rotina de interrupcao de timer, modo IRQ
 INTPND:		.word	0x10140000	@ Interrupt status register
 
 @ ============================================================================================================
-@ 3.6 Programa principal
+@ Programa principal
 @ ============================================================================================================
 
 _main:
