@@ -24,10 +24,19 @@ _Reset:
 	MSR	cpsr, r0
 
 	@ Set second process state
-	ADR	r1, main
-	STR	r1, irq_return_address
+	ADR	r0, main
+	STR	r0, irq_return_address
 	LDR	sp, =process_1_stack_top
 	ADR	r4, message_2
+	BL	save_process_state
+
+	@ Set third process state
+	MOV	r0, #2
+	STR	r0, current_process
+	ADR	r0, main
+	STR	r0, irq_return_address
+	LDR	sp, =process_2_stack_top
+	ADR	r4, message_3
 	BL	save_process_state
 
 	@ Switch to first process
@@ -42,6 +51,7 @@ _Reset:
 
 message_1:		.asciz "1"
 message_2:		.asciz "2"
+message_3:		.asciz "3"
 
 .align 4
 do_irq_interrupt:
@@ -60,10 +70,10 @@ do_irq_interrupt:
 get_current_process_table:
 	@ Retorna em r0 uma referencia a tabela de registradores do processo atual
 	LDR	r0, current_process
-	CMP	r0, #0
-	ADR	r0, process_0_table
-	MOVEQ	pc, lr
-	ADD	r0, r0, #68
+	@ Multiplica por 68 = 4 * 17 = 4 * (16 + 1)
+	MOV	r0, r0, LSL #2
+	ADD	r0, r0, r0, LSL #4
+	ADD	r0, r0, #process_0_table
 	MOV	pc, lr
 
 
@@ -104,7 +114,9 @@ case_timer_interrupt:	@ Rotina de interrupcao de timer, modo IRQ
 
 	@ Muda processo
 	LDR	r0, current_process
-	EOR	r0, r0, #1
+	ADD	r0, r0, #1
+	CMP	r0, #3
+	MOVEQ	r0, #0
 	STR	r0, current_process
 	BL	get_current_process_table
 	ADD	r0, r0, #68  @ aponta para fim da tabela
@@ -143,5 +155,6 @@ main:
 .align 4
 process_0_table:		.space 68
 process_1_table:		.space 68
+process_2_table:		.space 68
 irq_return_address:	.word	0
 current_process:	.word	1
