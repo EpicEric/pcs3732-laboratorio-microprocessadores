@@ -5,7 +5,7 @@
 @ ============================================================================================================
 _start:
 	B	_Reset				@ Posicao 0x00 - Reset
-	B	.				@ Posicao 0x04 - Instrucao nao-definida
+	B	do_undefined_interrupt		@ Posicao 0x04 - Instrucao nao-definida
 	B	.				@ Posicao 0x08 - Interrupcao de software
 	B	.				@ Posicao 0x0C - Prefetch abort
 	B	.				@ Posicao 0x10 - Data abort
@@ -17,17 +17,22 @@ _start:
 @ 3.3 Tratamento de interrupcoes
 @ ============================================================================================================
 _Reset:
-	@ Set IRQ mode stack
 	MRS	r0, cpsr		@ Save cpsr
-	MSR	cpsr_ctl, #0b11010010	@ IRQ mode
+
+	@ Set IRQ mode stack
+	MSR	cpsr_ctl, #0b11010010
 	LDR	sp, =irq_stack_top
+
+	@ Set undefined mode stack
+	MSR	cpsr_ctl, #0b11011011
+	LDR	sp, =undefined_stack_top
 	MSR	cpsr, r0
 
 	@ Set second process state
 	ADR	r0, main
 	STR	r0, irq_return_address
 	LDR	sp, =process_1_stack_top
-	ADR	r4, message_2
+	ADR	r4, message_1
 	BL	save_process_state
 
 	@ Set third process state
@@ -36,7 +41,7 @@ _Reset:
 	ADR	r0, main
 	STR	r0, irq_return_address
 	LDR	sp, =process_2_stack_top
-	ADR	r4, message_3
+	ADR	r4, message_2
 	BL	save_process_state
 
 	@ Switch to first process
@@ -46,12 +51,30 @@ _Reset:
 
 	BL	timer_init
 
-	ADR	r4, message_1
+	ADR	r4, message_0
 	B	main
 
+message_0:		.asciz "0"
 message_1:		.asciz "1"
 message_2:		.asciz "2"
-message_3:		.asciz "3"
+
+.align 4
+do_undefined_interrupt:
+	STMFD	sp!, {r0, r1, r2, lr}  @ scratch registers e $lr
+
+	LDR	r0, current_process
+	ADD	r0, r0, #0x30
+	STRB	r0, message_undefined_pid
+	ADR	r0, message_undefined
+	BL	print_uart0
+
+	@ Retorna sem subtrair 4 de $lr, pulando a instrucao invalida
+	LDMFD	sp!, {r0, r1, r2, pc}^
+
+
+undefined_return_address:	.word	0
+message_undefined:		.ascii "Undefined instruction on process "
+message_undefined_pid:		.asciz "X\n"
 
 .align 4
 do_irq_interrupt:
@@ -150,6 +173,7 @@ INTPND:		.word	0x10140000	@ Interrupt status register
 main:
 	MOV	r0, r4
 	BL	print_uart0
+	.word	0xf7f0a000  @ undefined instruction
 	B	main
 
 .align 4
