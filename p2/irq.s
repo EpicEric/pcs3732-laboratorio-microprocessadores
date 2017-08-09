@@ -29,7 +29,7 @@ _Reset:
 	LDR	sp, =process_1_stack_top
 	MOV	r4, #1
 	STR	r4, current_process
-	ADR	r5, message_2
+	ADR	r5, message_1
 	BL	save_process_state
 
 	@ Set third process state
@@ -38,16 +38,18 @@ _Reset:
 	LDR	sp, =process_2_stack_top
 	MOV	r4, #2
 	STR	r4, current_process
-	ADR	r5, message_1
+	ADR	r5, message_0
 	BL	save_process_state
 
 	@ Set first process state
 	ADR	r1, _main
 	STR	r1, irq_return_address
+	MOV	r0, #0b00011111
+	MSR	cpsr, r0
 	LDR	sp, =process_0_stack_top
 	MOV	r4, #0
 	STR	r4, current_process
-	ADR	r5, message_1
+	ADR	r5, message_0
 	BL	save_process_state
 
 	@ Switch to first process
@@ -56,8 +58,8 @@ _Reset:
 	BL	timer_init
 	B	switch_process
 
-message_1:		.asciz "1"
-message_2:		.asciz "2"
+message_0:		.asciz "1"
+message_1:		.asciz "2"
 
 .align 4
 do_irq_interrupt:
@@ -108,6 +110,9 @@ save_process_state:
 
 	CMP	r3, #0x13		@ Ja em modo supervisor?
 	BEQ	save_cpsr		@ Salva cpsr em spsr da tabela de registradores
+	CMP	r3, #0x1f		@ Modo sistema?
+	BICEQ	r3, #0xf		@ Processo em modo usuario
+	BEQ	save_cpsr		@ Nao sobrecarregar r3
 	MRS     r3, spsr                @ Carrega spsr
 	save_cpsr:
 	LDR     r0, irq_return_address
