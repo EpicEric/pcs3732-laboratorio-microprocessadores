@@ -17,6 +17,10 @@ _start:
 @ 3.3 Tratamento de interrupcoes
 @ ============================================================================================================
 _Reset:
+	@ spsr = Supervisor Mode (used by save_process_state)
+	MOV	r0, #0b00010011
+	MSR     spsr, r0
+
 	MRS	r0, cpsr		@ Save cpsr
 
 	@ Set IRQ mode stack
@@ -52,6 +56,8 @@ _Reset:
 	BL	timer_init
 
 	ADR	r4, message_0
+	MOV	r0, #0b00010000	@ first process runs in user mode
+	MSR	cpsr, r0
 	B	main
 
 message_0:		.asciz "0"
@@ -113,18 +119,19 @@ save_process_state:
 	@ Salva registradores
 	STMIA   r14!, {r0-r12}
 
-	@ Salva modo, muda para supervisor e salva banked registers
-	MOV     r2, r14                 @ r2 referencia tabela de registradores
-	MRS     r1, cpsr
-	MSR     cpsr_ctl, #0b11010011   @ Supervisor, I = 1
+	@ Salva modo, muda para modo em spsr e salva banked registers
+	MRS     r0, cpsr
+	MRS     r1, spsr
+	TST	r1, #0xf		@ 4 bits baixos 0 = user mode
+	ORREQ	r1, r1, #0xf
+	ORR	r1, r1, #0b11000000	@ Interrupt bits
+	MOV     r2, r14			@ r2 referencia tabela de registradores
+	MSR     cpsr_c, r1
 	STMIA   r2!, {sp, lr}
-	MSR     cpsr, r1
+	MSR     cpsr, r0
 
 	AND	r1, r1, #0x1f
-	CMP	r1, #0x13		@ Ja em modo supervisor?
-	BEQ	save_cpsr		@ Salva cpsr em spsr da tabela de registradores
 	MRS     r1, spsr                @ Carrega spsr
-	save_cpsr:
 	LDR     r0, irq_return_address
 	STMIA   r2!, {r0, r1}		@ Salva lr original e cpsr
 	LDMFD	sp!, {pc}
