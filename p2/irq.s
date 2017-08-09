@@ -103,6 +103,8 @@ save_process_state:
 	AND	r3, r1, #0x1f
 	CMP	r3, #0x13		@ Ja em modo supervisor?
 	BEQ	skip_mode_change	@ Pula mudanca de modo
+	CMP	r3, #0x1f		@ Modo sistema?
+	BICEQ	r3, #0xf		@ Processo em modo usuario
 	MSR     cpsr_ctl, #0b11010011   @ Supervisor, I = 1
 	skip_mode_change:
 	STMIA   r2!, {sp, lr}
@@ -110,8 +112,7 @@ save_process_state:
 
 	CMP	r3, #0x13		@ Ja em modo supervisor?
 	BEQ	save_cpsr		@ Salva cpsr em spsr da tabela de registradores
-	CMP	r3, #0x1f		@ Modo sistema?
-	BICEQ	r3, #0xf		@ Processo em modo usuario
+	CMP	r3, #0x10		@ Modo usuario?
 	BEQ	save_cpsr		@ Nao sobrecarregar r3
 	MRS     r3, spsr                @ Carrega spsr
 	save_cpsr:
