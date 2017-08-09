@@ -48,16 +48,15 @@ _Reset:
 	ADR	r4, message_2
 	BL	save_process_state
 
+	BL	timer_init
+
 	@ Switch to first process
 	MOV	r0, #0
 	STR	r0, current_process
-	LDR	sp, =process_0_stack_top
-
-	BL	timer_init
-
-	ADR	r4, message_0
-	MOV	r0, #0b00010000	@ first process runs in user mode
+	MOV	r0, #0b00010000		@ first process runs in user mode
 	MSR	cpsr, r0
+	LDR	sp, =process_0_stack_top
+	ADR	r4, message_0
 	B	main
 
 message_0:		.asciz "0"
