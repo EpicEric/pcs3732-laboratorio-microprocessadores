@@ -8,20 +8,32 @@ int main(char *str) {
 }
 
 void imprime(int n) {
-	char str[16];
+	int i, j, pot, digitos;
+	char str[16], *ptr, c;
 
 	if (n <= 0) return;
-	if (n >= 100) return;
-	if (n >= 10) {
-		str[0] = '0' + ((char) ((n / 10) % 10));
-		str[1] = '0' + ((char) (n % 10));
-		str[2] = ' ';
-		str[3] = '\0';
-	} else if (n >= 1) {
-		str[0] = '0' + ((char) (n % 10));
-		str[1] = ' ';
-		str[2] = '\0';
+
+	i = n / 10;
+	digitos = 1;
+	while (i > 0) {
+		i = i / 10;
+		digitos++;
+	} 
+
+	ptr = str;
+	while (digitos > 0) {
+		i = n;
+		for (j = 1; j < digitos; j++) {
+			i = n / 10;
+		}
+		c = '0' + (char) (i % 10);
+		*ptr++ = c;
+		pot = pot / 10;
+		digitos--;
 	}
+	*ptr++ = ' ';
+	*ptr++ = '\0';
+
 	print_uart0(str);
 	imprime(n - 1);
 }
@@ -30,7 +42,7 @@ int main_alt() {
 	int i;
 	while(1) {
 		for (i = 0x1ffff; i--;);
-		imprime(15);
+		imprime(18);
 	}
 	return 0;
 }

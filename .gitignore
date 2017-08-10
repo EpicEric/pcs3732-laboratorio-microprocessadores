@@ -4,5 +4,6 @@
 !*.ld
 !*.s
 !*.sh
+!*.zip
 !.gitignore
 !*/
