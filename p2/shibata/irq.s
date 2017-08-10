@@ -5,7 +5,7 @@
 @ ============================================================================================================
 _start:
 	B	_Reset				@ Posicao 0x00 - Reset
-	B	.				@ Posicao 0x04 - Instrucao nao-definida
+	B	do_undefined_interrupt		@ Posicao 0x04 - Instrucao nao-definida
 	B	.				@ Posicao 0x08 - Interrupcao de software
 	B	.				@ Posicao 0x0C - Prefetch abort
 	B	.				@ Posicao 0x10 - Data abort
@@ -17,31 +17,69 @@ _start:
 @ 3.3 Tratamento de interrupcoes
 @ ============================================================================================================
 _Reset:
-	@ Set IRQ mode stack
+	@ spsr = Supervisor Mode (used by save_process_state)
+	MOV	r0, #0b00010011
+	MSR     spsr, r0
+
 	MRS	r0, cpsr		@ Save cpsr
-	MSR	cpsr_ctl, #0b11010010	@ IRQ mode
+
+	@ Set IRQ mode stack
+	MSR	cpsr_ctl, #0b11010010
 	LDR	sp, =irq_stack_top
+
+	@ Set undefined mode stack
+	MSR	cpsr_ctl, #0b11011011
+	LDR	sp, =undefined_stack_top
 	MSR	cpsr, r0
 
 	@ Set second process state
-	ADR	r1, main
-	STR	r1, irq_return_address
+	ADR	r0, main
+	STR	r0, irq_return_address
 	LDR	sp, =process_1_stack_top
+	ADR	r4, message_1
+	BL	save_process_state
+
+	@ Set third process state
+	MOV	r0, #2
+	STR	r0, current_process
+	ADR	r0, main
+	STR	r0, irq_return_address
+	LDR	sp, =process_2_stack_top
 	ADR	r4, message_2
 	BL	save_process_state
+
+	BL	timer_init
 
 	@ Switch to first process
 	MOV	r0, #0
 	STR	r0, current_process
+	MOV	r0, #0b00010000		@ first process runs in user mode
+	MSR	cpsr, r0
 	LDR	sp, =process_0_stack_top
-
-	BL	timer_init
-
-	ADR	r4, message_1
+	ADR	r4, message_0
 	B	main
 
+message_0:		.asciz "0"
 message_1:		.asciz "1"
 message_2:		.asciz "2"
+
+.align 4
+do_undefined_interrupt:
+	STMFD	sp!, {r0, r1, r2, lr}  @ scratch registers e $lr
+
+	LDR	r0, current_process
+	ADD	r0, r0, #0x30
+	STRB	r0, message_undefined_pid
+	ADR	r0, message_undefined
+	BL	print_uart0
+
+	@ Retorna sem subtrair 4 de $lr, pulando a instrucao invalida
+	LDMFD	sp!, {r0, r1, r2, pc}^
+
+
+undefined_return_address:	.word	0
+message_undefined:		.ascii "Undefined instruction on process "
+message_undefined_pid:		.asciz "X\n"
 
 .align 4
 do_irq_interrupt:
@@ -60,10 +98,10 @@ do_irq_interrupt:
 get_current_process_table:
 	@ Retorna em r0 uma referencia a tabela de registradores do processo atual
 	LDR	r0, current_process
-	CMP	r0, #0
-	ADR	r0, process_0_table
-	MOVEQ	pc, lr
-	ADD	r0, r0, #68
+	@ Multiplica por 68 = 4 * 17 = 4 * (16 + 1)
+	MOV	r0, r0, LSL #2
+	ADD	r0, r0, r0, LSL #4
+	ADD	r0, r0, #process_0_table
 	MOV	pc, lr
 
 
@@ -80,23 +118,21 @@ save_process_state:
 	@ Salva registradores
 	STMIA   r14!, {r0-r12}
 
-	@ Salva modo, muda para supervisor e salva banked registers
-	MOV     r2, r14                 @ r2 referencia tabela de registradores
-	MRS     r1, cpsr
-	AND	r3, r1, #0x1f
-	CMP	r3, #0x13		@ Ja em modo supervisor?
-	BEQ	skip_mode_change	@ Pula mudanca de modo
-	MSR     cpsr_ctl, #0b11010011   @ Supervisor, I = 1
-	skip_mode_change:
+	@ Salva modo, muda para modo em spsr e salva banked registers
+	MRS     r0, cpsr
+	MRS     r1, spsr
+	TST	r1, #0xf		@ 4 bits baixos 0 = user mode
+	ORREQ	r1, r1, #0xf
+	ORR	r1, r1, #0b11000000	@ Interrupt bits
+	MOV     r2, r14			@ r2 referencia tabela de registradores
+	MSR     cpsr_c, r1
 	STMIA   r2!, {sp, lr}
-	MSR     cpsr, r1
+	MSR     cpsr, r0
 
-	CMP	r3, #0x13		@ Ja em modo supervisor?
-	BEQ	save_cpsr		@ Salva cpsr em spsr da tabela de registradores
-	MRS     r3, spsr                @ Carrega spsr
-	save_cpsr:
+	AND	r1, r1, #0x1f
+	MRS     r1, spsr                @ Carrega spsr
 	LDR     r0, irq_return_address
-	STMIA   r2!, {r0, r3}		@ Salva lr original e cpsr
+	STMIA   r2!, {r0, r1}		@ Salva lr original e cpsr
 	LDMFD	sp!, {pc}
 
 
@@ -107,7 +143,9 @@ case_timer_interrupt:	@ Rotina de interrupcao de timer, modo IRQ
 
 	@ Muda processo
 	LDR	r0, current_process
-	EOR	r0, r0, #1
+	ADD	r0, r0, #1
+	CMP	r0, #3
+	MOVEQ	r0, #0
 	STR	r0, current_process
 	BL	get_current_process_table
 	ADD	r0, r0, #68  @ aponta para fim da tabela
@@ -141,10 +179,12 @@ INTPND:		.word	0x10140000	@ Interrupt status register
 main:
 	MOV	r0, r4
 	BL	print_uart0
+	.word	0xf7f0a000  @ undefined instruction
 	B	main
 
 .align 4
 process_0_table:		.space 68
 process_1_table:		.space 68
+process_2_table:		.space 68
 irq_return_address:	.word	0
 current_process:	.word	1

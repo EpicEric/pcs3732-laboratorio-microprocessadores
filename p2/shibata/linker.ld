@@ -11,6 +11,10 @@ SECTIONS
 	process_0_stack_top = .;
 	. = . + 0x1000; /* 4kB of stack memory */
 	process_1_stack_top = .;
+	. = . + 0x1000; /* 4kB of stack memory */
+	process_2_stack_top = .;
 	. = . + 0x1000; /* 4kB of IRQ stack memory */
 	irq_stack_top = .;
+	. = . + 0x1000; /* 4kB of undefined stack memory */
+	undefined_stack_top = .;
 }
