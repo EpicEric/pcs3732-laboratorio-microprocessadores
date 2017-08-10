@@ -44,8 +44,8 @@ _Reset:
 	@ Set first process state
 	ADR	r1, _main
 	STR	r1, irq_return_address
-	MOV	r0, #0b00011111
-	MSR	cpsr, r0
+	@MOV	r0, #0b00011111
+	@MSR	cpsr, r0
 	LDR	sp, =process_0_stack_top
 	MOV	r4, #0
 	STR	r4, current_process
